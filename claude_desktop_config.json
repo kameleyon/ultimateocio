@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "agentocio": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "C:\\Users\\Administrator\\agentocio\\agentocio\\run-agentocio.bat"
+      ]
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "env": {
+    "NODE_ENV": "development",
+    "DEBUG": "true",
+    "LOG_LEVEL": "debug"
+  },
+  "server": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "database": {
+    "host": "localhost",
+    "port": 27017,
+    "name": "agentocio_dev"
+  },
+  "security": {
+    "corsOrigins": ["http://localhost:3000", "http://localhost:8080"],
+    "rateLimitRequests": 100
+  },
+  "features": {
+    "enableExperimental": true
+  }
+}

@@ -1,0 +1,525 @@
+"use strict";
+// Auto-generated boilerplate for cli-toolkit
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ChainCommandsSchema = exports.AnalyzeCommandSchema = exports.GenerateScriptSchema = exports.ExecuteCommandSchema = void 0;
+exports.activate = activate;
+exports.onFileWrite = onFileWrite;
+exports.onSessionStart = onSessionStart;
+exports.onCommand = onCommand;
+const zod_1 = require("zod");
+const fs = __importStar(require("fs/promises"));
+const path = __importStar(require("path"));
+const child_process_1 = require("child_process");
+const util_1 = require("util");
+// Promisified exec for running shell commands
+const execAsync = (0, util_1.promisify)(child_process_1.exec);
+function activate() {
+    console.log("[TOOL] cli-toolkit activated");
+}
+/**
+ * Handles file write events that might trigger CLI updates
+ */
+function onFileWrite(event) {
+    console.log(`[CLI Toolkit] Watching file write: ${event.path}`);
+    // Could trigger actions based on file changes
+    const fileExt = path.extname(event.path);
+    if (fileExt === '.sh' || fileExt === '.bat' || fileExt === '.cmd' || fileExt === '.ps1') {
+        console.log(`[CLI Toolkit] Detected script file change: ${event.path}`);
+    }
+}
+/**
+ * Handles session start logic
+ */
+function onSessionStart(session) {
+    console.log(`[CLI Toolkit] Session started: ${session.id}`);
+}
+/**
+ * Handles cli-toolkit commands
+ */
+function onCommand(command) {
+    return __awaiter(this, void 0, void 0, function* () {
+        switch (command.name) {
+            case 'cli-toolkit:execute':
+                console.log('[CLI Toolkit] Executing command...');
+                return yield handleExecuteCommand(command.args[0]);
+            case 'cli-toolkit:generate':
+                console.log('[CLI Toolkit] Generating script...');
+                return yield handleGenerateScript(command.args[0]);
+            case 'cli-toolkit:analyze':
+                console.log('[CLI Toolkit] Analyzing command...');
+                return yield handleAnalyzeCommand(command.args[0]);
+            case 'cli-toolkit:chain':
+                console.log('[CLI Toolkit] Chaining commands...');
+                return yield handleChainCommands(command.args[0]);
+            default:
+                console.warn(`[CLI Toolkit] Unknown command: ${command.name}`);
+                return { error: `Unknown command: ${command.name}` };
+        }
+    });
+}
+// Define schemas for CLI Toolkit tool
+exports.ExecuteCommandSchema = zod_1.z.object({
+    command: zod_1.z.string(),
+    args: zod_1.z.array(zod_1.z.string()).optional(),
+    cwd: zod_1.z.string().optional(),
+    env: zod_1.z.record(zod_1.z.string(), zod_1.z.string()).optional(),
+    timeout: zod_1.z.number().optional(),
+    shell: zod_1.z.boolean().optional().default(true),
+    captureOutput: zod_1.z.boolean().optional().default(true),
+});
+exports.GenerateScriptSchema = zod_1.z.object({
+    name: zod_1.z.string(),
+    type: zod_1.z.enum(['bash', 'batch', 'powershell', 'node']).default('bash'),
+    commands: zod_1.z.array(zod_1.z.string()),
+    variables: zod_1.z.record(zod_1.z.string(), zod_1.z.string()).optional(),
+    description: zod_1.z.string().optional(),
+    outputPath: zod_1.z.string().optional(),
+    makeExecutable: zod_1.z.boolean().optional().default(true),
+});
+exports.AnalyzeCommandSchema = zod_1.z.object({
+    command: zod_1.z.string(),
+    args: zod_1.z.array(zod_1.z.string()).optional(),
+    explainFlags: zod_1.z.boolean().optional().default(true),
+    suggestAlternatives: zod_1.z.boolean().optional().default(true),
+    suggestOptimizations: zod_1.z.boolean().optional().default(true),
+});
+exports.ChainCommandsSchema = zod_1.z.object({
+    commands: zod_1.z.array(zod_1.z.object({
+        command: zod_1.z.string(),
+        args: zod_1.z.array(zod_1.z.string()).optional(),
+        condition: zod_1.z.string().optional(),
+        ignoreError: zod_1.z.boolean().optional().default(false),
+    })),
+    parallel: zod_1.z.boolean().optional().default(false),
+    stopOnError: zod_1.z.boolean().optional().default(true),
+    outputFormat: zod_1.z.enum(['text', 'json']).optional().default('text'),
+    timeout: zod_1.z.number().optional(),
+});
+/**
+ * Executes a CLI command
+ */
+function handleExecuteCommand(args) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
+        try {
+            const result = exports.ExecuteCommandSchema.safeParse(args);
+            if (!result.success) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                error: result.error.format(),
+                                message: "Invalid arguments for executing command"
+                            }, null, 2)
+                        }],
+                    isError: true
+                };
+            }
+            const { command, args: cmdArgs, cwd, env, timeout, shell, captureOutput } = result.data;
+            // Build the command string
+            const fullCommand = cmdArgs && cmdArgs.length > 0
+                ? `${command} ${cmdArgs.join(' ')}`
+                : command;
+            // Execute the command
+            try {
+                const options = {
+                    cwd: cwd || process.cwd(),
+                    env: env ? Object.assign(Object.assign({}, process.env), env) : process.env,
+                    timeout: timeout,
+                    shell
+                };
+                let stdout, stderr;
+                if (captureOutput) {
+                    // Use execAsync to capture output
+                    const { stdout: output, stderr: error } = yield execAsync(fullCommand, options);
+                    stdout = output;
+                    stderr = error;
+                }
+                else {
+                    // Use execSync if we don't need to capture output
+                    (0, child_process_1.execSync)(fullCommand, Object.assign(Object.assign({}, options), { stdio: 'inherit' }));
+                    stdout = '[Output not captured]';
+                    stderr = '';
+                }
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                command: fullCommand,
+                                exitCode: 0,
+                                stdout: typeof stdout === 'string' ? stdout.trim() : stdout ? stdout.toString().trim() : '',
+                                stderr: typeof stderr === 'string' ? stderr.trim() : stderr ? stderr.toString().trim() : '',
+                                message: `Command executed successfully: ${fullCommand}`
+                            }, null, 2)
+                        }]
+                };
+            }
+            catch (error) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                command: fullCommand,
+                                exitCode: error.code || 1,
+                                stdout: (_a = error.stdout) === null || _a === void 0 ? void 0 : _a.trim(),
+                                stderr: (_b = error.stderr) === null || _b === void 0 ? void 0 : _b.trim(),
+                                error: String(error),
+                                message: `Command execution failed: ${fullCommand}`
+                            }, null, 2)
+                        }],
+                    isError: true
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            error: String(error),
+                            message: "Failed to execute command"
+                        }, null, 2)
+                    }],
+                isError: true
+            };
+        }
+    });
+}
+/**
+ * Generates a script file
+ */
+function handleGenerateScript(args) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const result = exports.GenerateScriptSchema.safeParse(args);
+            if (!result.success) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                error: result.error.format(),
+                                message: "Invalid arguments for generating script"
+                            }, null, 2)
+                        }],
+                    isError: true
+                };
+            }
+            const { name, type, commands, variables, description, outputPath, makeExecutable } = result.data;
+            // Generate script content based on type
+            let scriptContent = '';
+            let fileExtension = '';
+            switch (type) {
+                case 'bash':
+                    fileExtension = '.sh';
+                    scriptContent = `#!/bin/bash
+${description ? `# ${description}\n` : ''}
+${variables ? Object.entries(variables).map(([key, value]) => `${key}="${value}"`).join('\n') + '\n\n' : ''}
+${commands.join('\n')}
+`;
+                    break;
+                case 'batch':
+                    fileExtension = '.bat';
+                    scriptContent = `@echo off
+${description ? `:: ${description}\n` : ''}
+${variables ? Object.entries(variables).map(([key, value]) => `SET "${key}=${value}"`).join('\n') + '\n\n' : ''}
+${commands.join('\n')}
+`;
+                    break;
+                case 'powershell':
+                    fileExtension = '.ps1';
+                    scriptContent = `# PowerShell Script
+${description ? `# ${description}\n` : ''}
+${variables ? Object.entries(variables).map(([key, value]) => `$${key} = "${value}"`).join('\n') + '\n\n' : ''}
+${commands.join('\n')}
+`;
+                    break;
+                case 'node':
+                    fileExtension = '.js';
+                    scriptContent = `#!/usr/bin/env node
+${description ? `// ${description}\n` : ''}
+const { execSync } = require('child_process');
+
+${variables ? `const variables = ${JSON.stringify(variables, null, 2)};\n\n` : ''}
+// Execute commands
+(async () => {
+  try {
+    ${commands.map(cmd => `
+    console.log(\`Executing: ${cmd}\`);
+    execSync(\`${cmd}\`, { stdio: 'inherit' });`).join('\n')}
+    
+    console.log('Script execution completed');
+  } catch (error) {
+    console.error('Error executing script:', error);
+    process.exit(1);
+  }
+})();
+`;
+                    break;
+            }
+            // Determine output file path
+            const scriptFilename = `${name}${fileExtension}`;
+            const scriptPath = outputPath
+                ? path.join(outputPath, scriptFilename)
+                : path.join(process.cwd(), scriptFilename);
+            // Ensure directory exists
+            const dir = path.dirname(scriptPath);
+            yield fs.mkdir(dir, { recursive: true });
+            // Write script file
+            yield fs.writeFile(scriptPath, scriptContent, { mode: makeExecutable ? 0o755 : 0o644 });
+            return {
+                content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            name,
+                            type,
+                            path: scriptPath,
+                            size: scriptContent.length,
+                            commands: commands.length,
+                            variables: variables ? Object.keys(variables).length : 0,
+                            executable: makeExecutable,
+                            message: `Script "${name}${fileExtension}" generated successfully at ${scriptPath}`
+                        }, null, 2)
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            error: String(error),
+                            message: "Failed to generate script"
+                        }, null, 2)
+                    }],
+                isError: true
+            };
+        }
+    });
+}
+/**
+ * Analyzes a CLI command to provide information and suggestions
+ */
+function handleAnalyzeCommand(args) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const result = exports.AnalyzeCommandSchema.safeParse(args);
+            if (!result.success) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                error: result.error.format(),
+                                message: "Invalid arguments for analyzing command"
+                            }, null, 2)
+                        }],
+                    isError: true
+                };
+            }
+            const { command, args: cmdArgs, explainFlags, suggestAlternatives, suggestOptimizations } = result.data;
+            // Build the command string
+            const fullCommand = cmdArgs && cmdArgs.length > 0
+                ? `${command} ${cmdArgs.join(' ')}`
+                : command;
+            // In a real implementation, this would analyze the command and provide insights
+            // For now, we'll just return a mock analysis
+            // Split command into parts
+            const parts = fullCommand.split(' ');
+            const commandName = parts[0];
+            const commandArgs = parts.slice(1);
+            // Mock flag explanations for common commands
+            const flagExplanations = {
+                'git': {
+                    '--force': 'Force the operation, potentially discarding changes',
+                    '--verbose': 'Show verbose output during operation',
+                    '-b': 'Create a new branch',
+                },
+                'npm': {
+                    '--save': 'Save as a dependency in package.json',
+                    '--save-dev': 'Save as a development dependency in package.json',
+                    '--global': 'Install globally rather than locally',
+                },
+                'docker': {
+                    '-d': 'Run container in detached mode',
+                    '-p': 'Publish a container\'s port to the host',
+                    '-v': 'Bind mount a volume',
+                }
+            };
+            // Mock alternative suggestions
+            const alternativeSuggestions = {
+                'git': ['GitHub CLI (gh)', 'Mercurial (hg)', 'SVN'],
+                'npm': ['Yarn', 'pnpm'],
+                'docker': ['Podman', 'containerd', 'LXC'],
+                'ls': ['exa', 'lsd', 'fd'],
+                'cat': ['bat', 'less'],
+                'find': ['fd', 'find-plus', 'locate'],
+                'grep': ['ripgrep (rg)', 'ack', 'ag'],
+            };
+            // Mock optimization suggestions
+            const optimizationSuggestions = {
+                'git': [
+                    'Use shallow clones (--depth 1) for temporary repos',
+                    'Use sparse checkouts for large repositories',
+                ],
+                'npm': [
+                    'Use npm ci instead of npm install for CI environments',
+                    'Add --no-save when installing temporary packages',
+                ],
+                'docker': [
+                    'Use multi-stage builds to reduce image size',
+                    'Use .dockerignore to exclude unnecessary files',
+                ],
+            };
+            // Generate analysis
+            const analysis = {
+                command: commandName,
+                args: commandArgs,
+                flagAnalysis: explainFlags ? [] : undefined,
+                alternatives: suggestAlternatives ? alternativeSuggestions[commandName] || [] : undefined,
+                optimizations: suggestOptimizations ? optimizationSuggestions[commandName] || [] : undefined,
+            };
+            // Generate flag explanations if requested
+            if (explainFlags) {
+                const knownFlags = flagExplanations[commandName] || {};
+                for (const arg of commandArgs) {
+                    if (arg.startsWith('-')) {
+                        analysis.flagAnalysis.push({
+                            flag: arg,
+                            explanation: knownFlags[arg] || 'Unknown flag',
+                        });
+                    }
+                }
+            }
+            return {
+                content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            command: fullCommand,
+                            analysis,
+                            message: `Command analysis for: ${fullCommand}`
+                        }, null, 2)
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            error: String(error),
+                            message: "Failed to analyze command"
+                        }, null, 2)
+                    }],
+                isError: true
+            };
+        }
+    });
+}
+/**
+ * Chains multiple commands together
+ */
+function handleChainCommands(args) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const result = exports.ChainCommandsSchema.safeParse(args);
+            if (!result.success) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                error: result.error.format(),
+                                message: "Invalid arguments for chaining commands"
+                            }, null, 2)
+                        }],
+                    isError: true
+                };
+            }
+            const { commands, parallel, stopOnError, outputFormat, timeout } = result.data;
+            // In a real implementation, this would execute the commands in sequence or parallel
+            // For now, we'll just return a mock result
+            const results = commands.map((cmd, index) => ({
+                command: cmd.command + (cmd.args ? ` ${cmd.args.join(' ')}` : ''),
+                index,
+                exitCode: 0,
+                stdout: `Mock output for command: ${cmd.command}`,
+                stderr: '',
+                duration: Math.floor(Math.random() * 1000) + 100, // Random duration between 100-1100ms
+            }));
+            let summaryMessage = '';
+            if (parallel) {
+                summaryMessage = `Executed ${commands.length} commands in parallel.`;
+            }
+            else {
+                summaryMessage = `Chained ${commands.length} commands sequentially.`;
+            }
+            return {
+                content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            commands: commands.map(c => c.command + (c.args ? ` ${c.args.join(' ')}` : '')),
+                            parallel,
+                            results,
+                            totalCommands: commands.length,
+                            successfulCommands: results.filter(r => r.exitCode === 0).length,
+                            failedCommands: results.filter(r => r.exitCode !== 0).length,
+                            totalDuration: results.reduce((sum, r) => sum + r.duration, 0),
+                            message: summaryMessage
+                        }, null, 2)
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            error: String(error),
+                            message: "Failed to chain commands"
+                        }, null, 2)
+                    }],
+                isError: true
+            };
+        }
+    });
+}

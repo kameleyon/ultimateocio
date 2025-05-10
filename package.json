@@ -1,34 +1,78 @@
 {
-  "name": "ultimateocio",
-  "version": "1.0.0",
-  "description": "",
-  "main": "dist/main.js",
-  "directories": {
-    "doc": "docs"
+  "name": "@wonderwhy-er/desktop-commander",
+  "version": "0.1.35",
+  "description": "MCP server for terminal operations and file editing",
+  "license": "MIT",
+  "author": "Eduards Ruzga",
+  "homepage": "https://github.com/wonderwhy-er/DesktopCommanderMCP",
+  "bugs": "https://github.com/wonderwhy-er/DesktopCommanderMCP/issues",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
   },
+  "bin": {
+    "desktop-commander": "dist/index.js",
+    "setup": "dist/setup-claude-server.js"
+  },
+  "files": [
+    "dist",
+    "logo.png",
+    "testemonials"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "sync-version": "node scripts/sync-version.js",
+    "bump": "node scripts/sync-version.js --bump",
+    "bump:minor": "node scripts/sync-version.js --bump --minor",
+    "bump:major": "node scripts/sync-version.js --bump --major",
     "build": "tsc",
-    "start": "node dist/main.js"
+    "watch": "tsc --watch",
+    "start": "node dist/index.js & node startup.js",
+    "start:debug": "node --inspect-brk=9229 dist/index.js",
+    "setup": "npm install && npm run build && node setup-claude-server.js",
+    "setup:debug": "npm install && npm run build && node setup-claude-server.js --debug",
+    "prepare": "npm run build",
+    "test": "node test/run-all-tests.js",
+    "link:local": "npm run build && npm link",
+    "unlink:local": "npm unlink",
+    "inspector": "npx @modelcontextprotocol/inspector dist/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "@types/node": "^22.15.15",
-    "js-beautify": "^1.15.4",
-    "prettier": "^3.5.3",
-    "typescript": "^5.8.3"
+  "publishConfig": {
+    "access": "public"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "terminal",
+    "claude",
+    "ai",
+    "command-line",
+    "process-management",
+    "file-editing",
+    "code-editing",
+    "diff",
+    "patch",
+    "block-editing",
+    "file-system",
+    "text-manipulation",
+    "code-modification",
+    "surgical-edits",
+    "file-operations"
+  ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.1",
-    "@types/diff": "^7.0.2",
-    "@types/minimatch": "^5.1.2",
-    "diff": "^7.0.0",
+    "@modelcontextprotocol/sdk": "^1.8.0",
+    "@vscode/ripgrep": "^1.15.11",
+    "cross-fetch": "^4.1.0",
     "dotenv": "^16.5.0",
-    "minimatch": "^10.0.1",
-    "zod": "^3.24.4",
-    "zod-to-json-schema": "^3.24.5"
+    "glob": "^10.3.10",
+    "node-machine-id": "^1.1.12",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.23.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.24",
+    "nexe": "^5.0.0-beta.4",
+    "nodemon": "^3.0.2",
+    "shx": "^0.3.4",
+    "typescript": "^5.3.3"
   }
 }

@@ -1,0 +1,23 @@
+{
+  "env": {
+    "NODE_ENV": "production",
+    "DEBUG": "false",
+    "LOG_LEVEL": "error"
+  },
+  "server": {
+    "port": 80,
+    "host": "0.0.0.0"
+  },
+  "database": {
+    "host": "db.production.agentocio.com",
+    "port": 27017,
+    "name": "agentocio_prod"
+  },
+  "security": {
+    "corsOrigins": ["https://app.agentocio.com"],
+    "rateLimitRequests": 50
+  },
+  "features": {
+    "enableExperimental": false
+  }
+}
