@@ -55,13 +55,21 @@ export const outputSchema = z.object({
  */
 async function createDirectory(dirPath: string): Promise<string> {
   try {
+    if (!dirPath) {
+      throw new Error("Directory path is required");
+    }
+    
+    console.error(`[DIRECTORY_MANAGER] Creating directory: ${dirPath}`);
+    
     // Resolve and validate the path
     const resolvedPath = await resolvePath(dirPath);
+    console.error(`[DIRECTORY_MANAGER] Resolved path: ${resolvedPath}`);
     
     await fs.mkdir(resolvedPath, { recursive: true });
-    return `Successfully created directory ${dirPath}`;
+    return `Successfully created directory ${dirPath} (resolved to ${resolvedPath})`;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[DIRECTORY_MANAGER] Error creating directory: ${errorMessage}`);
     throw new Error(`Failed to create directory ${dirPath}: ${errorMessage}`);
   }
 }
@@ -71,22 +79,32 @@ async function createDirectory(dirPath: string): Promise<string> {
  */
 async function listDirectory(dirPath: string): Promise<string> {
   try {
+    if (!dirPath) {
+      throw new Error("Directory path is required");
+    }
+    
+    console.error(`[DIRECTORY_MANAGER] Listing directory: ${dirPath}`);
+    
     // Resolve and validate the path
     const resolvedPath = await resolvePath(dirPath);
+    console.error(`[DIRECTORY_MANAGER] Resolved path: ${resolvedPath}`);
     
     // Check if path exists
     if (!(await pathExists(resolvedPath))) {
-      throw new Error(`Directory does not exist: ${dirPath}`);
+      throw new Error(`Directory does not exist: ${dirPath} (resolved to ${resolvedPath})`);
     }
     
     const entries = await fs.readdir(resolvedPath, { withFileTypes: true });
+    console.error(`[DIRECTORY_MANAGER] Found ${entries.length} entries in ${resolvedPath}`);
+    
     const formatted = entries
       .map((entry) => `${entry.isDirectory() ? "[DIR]" : "[FILE]"} ${entry.name}`)
       .join("\n");
     
-    return formatted;
+    return formatted || "Directory is empty";
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[DIRECTORY_MANAGER] Error listing directory: ${errorMessage}`);
     throw new Error(`Failed to list directory ${dirPath}: ${errorMessage}`);
   }
 }
@@ -180,8 +198,21 @@ export async function execute(input: z.infer<typeof inputSchema>) {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[DIRECTORY_MANAGER] Error executing operation ${input.operation}: ${errorMessage}`);
+    
+    // Provide more detailed error message
+    let detailedMessage = errorMessage;
+    
+    // Add specific guidance for common errors
+    if (errorMessage.includes('Access to path') || errorMessage.includes('does not exist')) {
+      detailedMessage += `\n\nPlease check:
+1. The path exists and is accessible
+2. The path is within allowed directories
+3. The correct operation is being used`;
+    }
+    
     return {
-      content: [{ type: 'text', text: errorMessage }],
+      content: [{ type: 'text', text: detailedMessage }],
       isError: true,
     };
   }

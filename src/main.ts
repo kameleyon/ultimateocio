@@ -235,11 +235,55 @@ async function main() {
               
               return result;
             } catch (error: any) {
-              logError("TOOL_EXECUTION", `Failed to execute ${toolName}: ${error.message}`, error);
+              // Enhanced error logging with more context
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorStack = error instanceof Error ? error.stack : '';
+              
+              logError(
+                "TOOL_EXECUTION",
+                `Failed to execute ${toolName}: ${errorMessage}`,
+                { error, args, toolName, stack: errorStack }
+              );
+              
+              // More detailed error message for the client
+              let detailedMessage = `Error executing ${toolName}: ${errorMessage}`;
+              
+              // Add specific guidance for directory access errors
+              if (errorMessage.includes('Access to path') ||
+                  errorMessage.includes('does not exist') ||
+                  errorMessage.includes('ENOENT')) {
+                
+                // Safely extract path and operation from args
+                let pathInfo = 'No path provided';
+                let operationInfo = 'No operation specified';
+                
+                try {
+                  const argsObj = args as any;
+                  if (typeof argsObj === 'object' && argsObj !== null) {
+                    if (argsObj.path) {
+                      pathInfo = argsObj.path;
+                    } else if (argsObj.params && argsObj.params.path) {
+                      pathInfo = argsObj.params.path;
+                    }
+                    
+                    if (argsObj.operation) {
+                      operationInfo = argsObj.operation;
+                    }
+                  }
+                } catch (e) {
+                  // Ignore extraction errors
+                }
+                
+                detailedMessage += `\n\nThis appears to be a directory access issue. Please check:
+1. The path exists: ${pathInfo}
+2. The path is within allowed directories
+3. The correct operation is being used: ${operationInfo}`;
+              }
+              
               return {
                 content: [{
                   type: "text",
-                  text: `Error executing ${toolName}: ${error.message}\nPlease check if the path exists and is accessible.`
+                  text: detailedMessage
                 }],
                 isError: true
               };
