@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { resolvePath, pathExists } from '../../utils/pathUtils';
 
 export const toolName = 'file-mover';
 export const toolDescription = 'Move or rename files and directories';
@@ -27,41 +28,38 @@ export const outputSchema = z.object({
   isError: z.boolean().optional(),
 });
 
-/**
- * Check if a path exists
- */
-async function pathExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Move a file or directory
  */
 async function moveFile(sourcePath: string, destinationPath: string): Promise<void> {
   try {
+    // Resolve and validate the source path
+    const resolvedSourcePath = await resolvePath(sourcePath);
+    
     // Check if source exists
-    if (!(await pathExists(sourcePath))) {
+    if (!(await pathExists(resolvedSourcePath))) {
       throw new Error(`Source path does not exist: ${sourcePath}`);
     }
     
+    // Resolve and validate the destination path
+    const resolvedDestinationPath = await resolvePath(destinationPath);
+    
     // Check if destination already exists
-    if (await pathExists(destinationPath)) {
+    if (await pathExists(resolvedDestinationPath)) {
       throw new Error(`Destination path already exists: ${destinationPath}`);
     }
     
     // Ensure the destination directory exists
-    const destinationDir = path.dirname(destinationPath);
+    const destinationDir = path.dirname(resolvedDestinationPath);
     if (!(await pathExists(destinationDir))) {
-      await fs.mkdir(destinationDir, { recursive: true });
+      // Resolve and validate the destination directory path
+      const resolvedDestinationDir = await resolvePath(destinationDir);
+      await fs.mkdir(resolvedDestinationDir, { recursive: true });
     }
     
     // Move the file or directory
-    await fs.rename(sourcePath, destinationPath);
+    await fs.rename(resolvedSourcePath, resolvedDestinationPath);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to move ${sourcePath} to ${destinationPath}: ${errorMessage}`);

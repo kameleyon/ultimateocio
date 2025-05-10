@@ -4,6 +4,7 @@ import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { minimatch } from 'minimatch';
+import { resolvePath, pathExists } from '../../utils/pathUtils';
 
 export const toolName = 'file-searcher';
 export const toolDescription = 'Search for files and directories with pattern matching';
@@ -47,29 +48,48 @@ async function searchFiles(
   pattern: string,
   excludePatterns: string[] = []
 ): Promise<string[]> {
+  // Resolve and validate the root path
+  const resolvedRootPath = await resolvePath(rootPath);
+  
+  // Check if path exists
+  if (!(await pathExists(resolvedRootPath))) {
+    throw new Error(`Directory does not exist: ${rootPath}`);
+  }
+  
   const results: string[] = [];
 
   async function search(currentPath: string) {
     try {
-      const entries = await fs.readdir(currentPath, { withFileTypes: true });
+      // Resolve and validate the current path
+      const resolvedCurrentPath = await resolvePath(currentPath);
+      
+      const entries = await fs.readdir(resolvedCurrentPath, { withFileTypes: true });
 
       for (const entry of entries) {
         const fullPath = path.join(currentPath, entry.name);
         
-        // Check if path matches any exclude pattern
-        const relativePath = path.relative(rootPath, fullPath);
-        if (shouldExclude(relativePath, excludePatterns)) {
-          continue;
-        }
+        try {
+          // Resolve and validate the full path
+          const resolvedFullPath = await resolvePath(fullPath);
+          
+          // Check if path matches any exclude pattern
+          const relativePath = path.relative(rootPath, fullPath);
+          if (shouldExclude(relativePath, excludePatterns)) {
+            continue;
+          }
 
-        // Check if the entry name matches the pattern
-        if (entry.name.toLowerCase().includes(pattern.toLowerCase())) {
-          results.push(fullPath);
-        }
+          // Check if the entry name matches the pattern
+          if (entry.name.toLowerCase().includes(pattern.toLowerCase())) {
+            results.push(fullPath);
+          }
 
-        // Recursively search directories
-        if (entry.isDirectory()) {
-          await search(fullPath);
+          // Recursively search directories
+          if (entry.isDirectory()) {
+            await search(fullPath);
+          }
+        } catch (error) {
+          // Skip paths we can't access or that are outside allowed directories
+          console.error(`Error processing ${fullPath}: ${error}`);
         }
       }
     } catch (error) {
@@ -78,7 +98,7 @@ async function searchFiles(
     }
   }
 
-  await search(rootPath);
+  await search(resolvedRootPath);
   return results;
 }
 

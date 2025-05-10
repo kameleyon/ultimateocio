@@ -43,6 +43,15 @@ import * as assistantRouterModule from './tools/code-tools/assistant-router.js';
 import * as chatLoggerModule from './tools/code-tools/chat-logger.js';
 import * as personaLoaderModule from './tools/code-tools/persona-loader.js';
 
+// Import file system tools
+import * as directoryManagerModule from './tools/code-tools/directory-manager.js';
+import * as fileReaderModule from './tools/code-tools/file-reader.js';
+import * as fileWriterModule from './tools/code-tools/file-writer.js';
+import * as fileInfoModule from './tools/code-tools/file-info.js';
+import * as fileMoverModule from './tools/code-tools/file-mover.js';
+import * as fileSearcherModule from './tools/code-tools/file-searcher.js';
+import * as fileEditorModule from './tools/code-tools/file-editor.js';
+
 // Redirect console.log to stderr to avoid interfering with JSON-RPC communication
 const originalConsoleLog = console.log;
 console.log = function(...args: any[]) {
@@ -128,11 +137,38 @@ const toolsDefinition: Record<string, { module: BaseToolModule, defaultDescripti
   'voice-cloner': { module: voiceClonerModule, defaultDescription: 'Voice cloner' },
   'assistant-router': { module: assistantRouterModule, defaultDescription: 'Assistant router' },
   'chat-logger': { module: chatLoggerModule, defaultDescription: 'Chat logger' },
-  'persona-loader': { module: personaLoaderModule, defaultDescription: 'Persona loader' }
+  'persona-loader': { module: personaLoaderModule, defaultDescription: 'Persona loader' },
+  
+  // Add file system tools
+  'directory-manager': { module: directoryManagerModule, defaultDescription: 'Manage directories with create, list, and tree operations' },
+  'file-reader': { module: fileReaderModule, defaultDescription: 'Read file contents with support for single and multiple files' },
+  'file-writer': { module: fileWriterModule, defaultDescription: 'Write content to files with support for creating directories' },
+  'file-info': { module: fileInfoModule, defaultDescription: 'Get detailed metadata about files and directories' },
+  'file-mover': { module: fileMoverModule, defaultDescription: 'Move or rename files and directories' },
+  'file-searcher': { module: fileSearcherModule, defaultDescription: 'Search for files and directories with pattern matching' },
+  'file-editor': { module: fileEditorModule, defaultDescription: 'Edit files with advanced pattern matching and formatting' }
 };
 
+// Configure debug mode
+const DEBUG_MODE = true; // Set to false in production
+
+// Configure structured logging
+function logError(context: string, message: string, error?: any) {
+  console.error(`[ERROR][${context}] ${message}`, error ? error : '');
+}
+
+function logInfo(context: string, message: string) {
+  console.error(`[INFO][${context}] ${message}`);
+}
+
+function logDebug(context: string, message: string, data?: any) {
+  if (DEBUG_MODE) {
+    console.error(`[DEBUG][${context}] ${message}`, data ? data : '');
+  }
+}
+
 async function main() {
-  console.error("Initializing McpServer...");
+  logInfo("MAIN", "Initializing McpServer...");
   
   // Create an MCP server using the official SDK
   const server = new McpServer({
@@ -140,7 +176,7 @@ async function main() {
     version: "1.0.0"
   });
 
-  console.error("Registering tools...");
+  logInfo("TOOLS", "Registering tools...");
   
   // Register all tools
   let registeredCount = 0;
@@ -170,6 +206,17 @@ async function main() {
                 // Use execute function if available
                 // Use type assertion to work around TypeScript errors
                 const params = args as any;
+                
+                // Handle the case where the operation is missing for directory-manager
+                if (params && !params.operation && module === directoryManagerModule) {
+                  logDebug("TOOL_EXECUTION", "Adding default operation for directory-manager", params);
+                  params.operation = 'list_directory';
+                  if (params.path) {
+                    params.params = { path: params.path };
+                  }
+                }
+                
+                logDebug("TOOL_EXECUTION", `Executing ${toolName} with params:`, params);
                 result = await module.execute(params);
               } else if (typeof module.onCommand === 'function') {
                 // Special handling for code-analyzer's onCommand(command: string, args: any)
@@ -188,9 +235,12 @@ async function main() {
               
               return result;
             } catch (error: any) {
-              console.error(`[TOOLS] Error executing tool "${toolName}":`, error);
+              logError("TOOL_EXECUTION", `Failed to execute ${toolName}: ${error.message}`, error);
               return {
-                content: [{ type: "text", text: `Error: ${error.message}` }],
+                content: [{
+                  type: "text",
+                  text: `Error executing ${toolName}: ${error.message}\nPlease check if the path exists and is accessible.`
+                }],
                 isError: true
               };
             }

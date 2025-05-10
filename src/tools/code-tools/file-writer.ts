@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { resolvePath, pathExists } from '../../utils/pathUtils';
 
 export const toolName = 'file-writer';
 export const toolDescription = 'Write content to files with support for creating directories';
@@ -36,10 +37,18 @@ export const outputSchema = z.object({
 async function ensureDirectoryExists(filePath: string): Promise<void> {
   const dirname = path.dirname(filePath);
   try {
-    await fs.access(dirname);
+    // Resolve and validate the directory path
+    const resolvedDirname = await resolvePath(dirname);
+    
+    try {
+      await fs.access(resolvedDirname);
+    } catch (error) {
+      // Directory doesn't exist, create it
+      await fs.mkdir(resolvedDirname, { recursive: true });
+    }
   } catch (error) {
-    // Directory doesn't exist, create it
-    await fs.mkdir(dirname, { recursive: true });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to ensure directory exists for ${filePath}: ${errorMessage}`);
   }
 }
 
@@ -48,11 +57,14 @@ async function ensureDirectoryExists(filePath: string): Promise<void> {
  */
 async function writeFile(filePath: string, content: string): Promise<void> {
   try {
+    // Resolve and validate the path
+    const resolvedPath = await resolvePath(filePath);
+    
     // Ensure the directory exists
-    await ensureDirectoryExists(filePath);
+    await ensureDirectoryExists(resolvedPath);
     
     // Write the file
-    await fs.writeFile(filePath, content, 'utf-8');
+    await fs.writeFile(resolvedPath, content, 'utf-8');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to write file ${filePath}: ${errorMessage}`);

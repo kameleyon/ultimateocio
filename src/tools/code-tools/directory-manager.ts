@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { resolvePath, pathExists } from '../../utils/pathUtils';
 
 export const toolName = 'directory-manager';
 export const toolDescription = 'Manage directories with create, list, and tree operations';
@@ -54,7 +55,10 @@ export const outputSchema = z.object({
  */
 async function createDirectory(dirPath: string): Promise<string> {
   try {
-    await fs.mkdir(dirPath, { recursive: true });
+    // Resolve and validate the path
+    const resolvedPath = await resolvePath(dirPath);
+    
+    await fs.mkdir(resolvedPath, { recursive: true });
     return `Successfully created directory ${dirPath}`;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -67,7 +71,15 @@ async function createDirectory(dirPath: string): Promise<string> {
  */
 async function listDirectory(dirPath: string): Promise<string> {
   try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    // Resolve and validate the path
+    const resolvedPath = await resolvePath(dirPath);
+    
+    // Check if path exists
+    if (!(await pathExists(resolvedPath))) {
+      throw new Error(`Directory does not exist: ${dirPath}`);
+    }
+    
+    const entries = await fs.readdir(resolvedPath, { withFileTypes: true });
     const formatted = entries
       .map((entry) => `${entry.isDirectory() ? "[DIR]" : "[FILE]"} ${entry.name}`)
       .join("\n");
@@ -90,7 +102,10 @@ async function getDirectoryTree(dirPath: string): Promise<string> {
   }
 
   async function buildTree(currentPath: string): Promise<TreeEntry[]> {
-    const entries = await fs.readdir(currentPath, { withFileTypes: true });
+    // Resolve and validate the path
+    const resolvedPath = await resolvePath(currentPath);
+    
+    const entries = await fs.readdir(resolvedPath, { withFileTypes: true });
     const result: TreeEntry[] = [];
 
     for (const entry of entries) {
@@ -101,7 +116,13 @@ async function getDirectoryTree(dirPath: string): Promise<string> {
 
       if (entry.isDirectory()) {
         const subPath = path.join(currentPath, entry.name);
-        entryData.children = await buildTree(subPath);
+        try {
+          entryData.children = await buildTree(subPath);
+        } catch (error) {
+          // Skip directories we can't access
+          console.error(`[ERROR][DIRECTORY_TREE] Failed to access ${subPath}: ${error}`);
+          entryData.children = [];
+        }
       }
 
       result.push(entryData);
@@ -111,7 +132,15 @@ async function getDirectoryTree(dirPath: string): Promise<string> {
   }
 
   try {
-    const treeData = await buildTree(dirPath);
+    // Resolve and validate the path
+    const resolvedPath = await resolvePath(dirPath);
+    
+    // Check if path exists
+    if (!(await pathExists(resolvedPath))) {
+      throw new Error(`Directory does not exist: ${dirPath}`);
+    }
+    
+    const treeData = await buildTree(resolvedPath);
     return JSON.stringify(treeData, null, 2);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

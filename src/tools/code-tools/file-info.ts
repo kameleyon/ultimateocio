@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { resolvePath, pathExists } from '../../utils/pathUtils';
 
 export const toolName = 'file-info';
 export const toolDescription = 'Get detailed metadata about files and directories';
@@ -38,7 +39,15 @@ async function getFileStats(filePath: string): Promise<{
   isFile: boolean;
   permissions: string;
 }> {
-  const stats = await fs.stat(filePath);
+  // Resolve and validate the path
+  const resolvedPath = await resolvePath(filePath);
+  
+  // Check if path exists
+  if (!(await pathExists(resolvedPath))) {
+    throw new Error(`File or directory does not exist: ${filePath}`);
+  }
+  
+  const stats = await fs.stat(resolvedPath);
   
   return {
     size: stats.size,

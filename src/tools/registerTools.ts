@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { MCPServer } from '../mcp/core/MCPServer';
-import { MCPTool } from '../mcp/core/types';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 // Ensure all console.log calls are redirected to stderr in this file
 // This is crucial for MCP as stdout should only contain JSON-RPC messages
@@ -117,86 +116,13 @@ const toolsDefinition: Record<string, { module: BaseToolModule, defaultDescripti
   'persona-loader': { module: personaLoaderModule, defaultDescription: 'Persona loader' }
 };
 
-export function registerAllTools(server: MCPServer): void {
-  console.error('[TOOLS] Registering all tools with MCPServer...');
-  let registeredCount = 0;
-
-  for (const toolKey in toolsDefinition) {
-    if (Object.prototype.hasOwnProperty.call(toolsDefinition, toolKey)) {
-      const toolEntry = toolsDefinition[toolKey];
-      if (!toolEntry || !toolEntry.module) {
-        console.warn(`[TOOLS] Invalid or missing module for tool key "${toolKey}". Skipping.`);
-        continue;
-      }
-      const { module, defaultDescription } = toolEntry;
-
-      try {
-        const toolName = module.toolName || toolKey;
-        const toolDescription = module.toolDescription || defaultDescription;
-        let mcpTool: MCPTool;
-
-        if (typeof module.execute === 'function') {
-          // Preferred structure: module provides execute, inputSchema, outputSchema
-          const inputSchema = module.inputSchema || z.any();
-          const outputSchema = module.outputSchema || z.any();
-          mcpTool = {
-            name: toolName,
-            description: toolDescription,
-            inputSchema: zodToJsonSchema(inputSchema),
-            outputSchema: zodToJsonSchema(outputSchema),
-            execute: module.execute,
-          };
-        } else if (typeof module.onCommand === 'function') {
-          // Fallback for modules with onCommand
-          if (module === codeAnalyzerModule) {
-            // Special handling for code-analyzer's onCommand(command: string, args: any)
-            const analyzerInputSchema = z.object({
-              command: z.string().describe("The specific sub-command for the code analyzer."),
-              arguments: module.inputSchema || z.any().describe("The arguments for the sub-command.")
-            }).describe("Input for code-analyzer tool.");
-            
-            mcpTool = {
-              name: toolName,
-              description: toolDescription,
-              inputSchema: zodToJsonSchema(analyzerInputSchema),
-              outputSchema: zodToJsonSchema(module.outputSchema || z.any()),
-              execute: async (input: { command: string, arguments: any }) => {
-                if (typeof input.command !== 'string' || !('arguments' in input)) {
-                  throw new Error(`Invalid input for ${toolName}: Expected { command: string, arguments: any }`);
-                }
-                const result = (module.onCommand as (command: string, args: any) => any)(input.command, input.arguments);
-                return Promise.resolve(result);
-              },
-            };
-          } else {
-            // General assumption for other onCommand tools: onCommand(input: any)
-            // This might need further refinement if other tools also have multi-arg onCommand.
-            const generalOnCommandInputSchema = module.inputSchema || z.any();
-            mcpTool = {
-              name: toolName,
-              description: toolDescription,
-              inputSchema: zodToJsonSchema(generalOnCommandInputSchema),
-              outputSchema: zodToJsonSchema(module.outputSchema || z.any()),
-              execute: async (input: any) => {
-                const result = (module.onCommand as (input: any) => any)(input);
-                return Promise.resolve(result);
-              },
-            };
-          }
-        } else {
-          console.warn(`[TOOLS] Module for "${toolName}" does not have a valid 'execute' or 'onCommand' function. Skipping.`);
-          continue;
-        }
-
-        server.registerTool(mcpTool);
-        registeredCount++;
-      } catch (error: any) {
-        const toolNameForError = module.toolName || toolKey;
-        console.error(`[TOOLS] Failed to prepare or register tool "${toolNameForError}": ${error.message}`, error);
-      }
-    }
-  }
-  console.error(`[TOOLS] Successfully prepared and attempted to register ${registeredCount} tools.`);
+/**
+ * @deprecated This function is deprecated. Tools are now registered directly in main.ts.
+ * This file is kept for reference only and should not be used.
+ */
+export function registerAllTools(server: any): void {
+  console.error('[WARNING] The registerAllTools function is deprecated. Tools are now registered directly in main.ts.');
+  console.error('[WARNING] This function does nothing and should not be used.');
 }
 
 export default registerAllTools;

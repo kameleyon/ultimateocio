@@ -4,6 +4,7 @@ import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { diffLines, createTwoFilesPatch } from 'diff';
+import { resolvePath, pathExists } from '../../utils/pathUtils';
 
 export const toolName = 'file-editor';
 export const toolDescription = 'Edit files with advanced pattern matching and formatting';
@@ -68,8 +69,16 @@ async function applyFileEdits(
   edits: Array<{ oldText: string; newText: string }>,
   dryRun = false
 ): Promise<string> {
+  // Resolve and validate the path
+  const resolvedPath = await resolvePath(filePath);
+  
+  // Check if path exists
+  if (!(await pathExists(resolvedPath))) {
+    throw new Error(`File does not exist: ${filePath}`);
+  }
+  
   // Read file content and normalize line endings
-  const content = normalizeLineEndings(await fs.readFile(filePath, 'utf-8'));
+  const content = normalizeLineEndings(await fs.readFile(resolvedPath, 'utf-8'));
 
   // Apply edits sequentially
   let modifiedContent = content;
@@ -135,7 +144,7 @@ async function applyFileEdits(
   const formattedDiff = `${'`'.repeat(numBackticks)}diff\n${diff}${'`'.repeat(numBackticks)}\n\n`;
 
   if (!dryRun) {
-    await fs.writeFile(filePath, modifiedContent, 'utf-8');
+    await fs.writeFile(resolvedPath, modifiedContent, 'utf-8');
   }
 
   return formattedDiff;
