@@ -1,0 +1,30 @@
+{
+  "name": "ultimateocio",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/main.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/main.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^22.15.15",
+    "js-beautify": "^1.15.4",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.1",
+    "dotenv": "^16.5.0",
+    "zod": "^3.24.4",
+    "zod-to-json-schema": "^3.24.5"
+  }
+}
